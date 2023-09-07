@@ -1,0 +1,39 @@
+version: '3.9'
+
+services:
+  traefik:
+    container_name: traefik
+    image: traefik:latest
+    ports:
+      - target: 51820
+        published: 51820
+        protocol: udp
+        mode: host
+    command: --entryPoints.wg.address=:51820/udp
+  
+  wireguard:
+    container_name: wireguard
+    image: lscr.io/linuxserver/wireguard:latest
+    cap_add:
+      - NET_ADMIN
+    environment:
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
+      - SERVERURL=wireguard.mydomain.com                                     
+      - PEERS=Profile1,Profile2,OtherProfile
+    volumes:
+      - $DOCKERDIR/appdata/wireguard:/config
+    # Ports section could be omitted as Traefik 
+    # will take care of it
+    # ports:
+    #   - 51820:51820/udp
+    sysctls:
+      - net.ipv4.conf.all.src_valid_mark=1
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.udp.routers.wg.entrypoints=wireguard"
+      - "traefik.udp.routers.wg.service=wireguard-udp-svc"
+      - "traefik.udp.services.wg-udp-svc.loadbalancer.server.port=51820"
+
